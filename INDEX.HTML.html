@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Music Player</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 1.5rem;
+      animation: slideDown 1s ease-out;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      color: #e94560;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 1rem;
+    }
+
+    .song-list {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .song-item {
+      background-color: #0f3460;
+      padding: 0.8rem 1.2rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .song-item:hover {
+      background-color: #1f4068;
+      transform: scale(1.02);
+    }
+
+    .song-item.playing {
+      background-color: #e94560;
+      animation: pulse 1.5s infinite;
+      color: white;
+    }
+
+    .music-box {
+      background-color: #0f3460;
+      padding: 1.2rem;
+      border-radius: 20px;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      animation: fadeIn 1.5s ease-in;
+    }
+
+    .music-box h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .time {
+      margin: 0.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-bottom: 0.7rem;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background-color: #e94560;
+      color: white;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+      flex: 1 1 45%;
+    }
+
+    button:hover {
+      background-color: #d63447;
+      transform: scale(1.05);
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0px rgba(233, 69, 96, 0.6); }
+      50% { box-shadow: 0 0 20px rgba(233, 69, 96, 1); }
+      100% { box-shadow: 0 0 0px rgba(233, 69, 96, 0.6); }
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 1.8rem;
+      }
+      button {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>VibeTunes 🎵</h1>
+  </header>
+
+  <div class="container">
+    <div class="song-list" id="songList"></div>
+
+    <div class="music-box">
+      <h2 id="song-title">No Song Playing</h2>
+
+      <div class="time">
+        <span id="currentTime">00:00</span>
+        <span id="duration">00:00</span>
+      </div>
+
+      <input type="range" id="progress" value="0" step="1" min="0" max="100" onchange="seekTo()">
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5" onchange="setVolume()" title="Volume"/>
+
+      <div class="controls">
+        <button onclick="playSong()">▶ Play</button>
+        <button onclick="pauseSong()">⏸ Pause</button>
+      </div>
+
+      <audio id="audio"></audio>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 VibeTunes. All rights reserved.
+  </footer>
+
+  <script>
+    const songs = [
+      { title: "pakh mane didhi hot sonal to", url: "1.mp3" },
+      { title: "mogal no hoy medo", url: "2.mp3" },
+      { title: "bam bam bajrangbali", url: "3.mp3" }
+    ];
+
+    const songList = document.getElementById("songList");
+    const audio = document.getElementById("audio");
+    const songTitle = document.getElementById("song-title");
+    const progress = document.getElementById("progress");
+    const currentTimeEl = document.getElementById("currentTime");
+    const durationEl = document.getElementById("duration");
+    const volumeSlider = document.getElementById("volume");
+
+    let currentSongIndex = -1;
+
+    // Render songs
+    songs.forEach((song, index) => {
+      const div = document.createElement("div");
+      div.className = "song-item";
+      div.textContent = `${index + 1}. ${song.title}`;
+      div.dataset.index = index;
+      div.onclick = () => selectSong(index);
+      songList.appendChild(div);
+    });
+
+    function selectSong(index) {
+      currentSongIndex = index;
+      const song = songs[index];
+      audio.src = song.url;
+      songTitle.textContent = `Now Playing: ${song.title}`;
+      highlightCurrentSong();
+      audio.play();
+    }
+
+    function highlightCurrentSong() {
+      document.querySelectorAll(".song-item").forEach((item, i) => {
+        item.classList.toggle("playing", i === currentSongIndex);
+      });
+    }
+
+    function playSong() {
+      if (!audio.src) {
+        alert("Please select a song!");
+        return;
+      }
+      audio.play();
+    }
+
+    function pauseSong() {
+      audio.pause();
+    }
+
+    function updateProgress() {
+      progress.value = audio.currentTime;
+      currentTimeEl.textContent = formatTime(audio.currentTime);
+    }
+
+    function setDuration() {
+      progress.max = Math.floor(audio.duration);
+      durationEl.textContent = formatTime(audio.duration);
+    }
+
+    function formatTime(sec) {
+      const min = Math.floor(sec / 60);
+      const secs = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${min}:${secs}`;
+    }
+
+    function seekTo() {
+      audio.currentTime = progress.value;
+    }
+
+    function setVolume() {
+      audio.volume = volumeSlider.value;
+    }
+
+    function playNext() {
+      currentSongIndex = (currentSongIndex + 1) % songs.length;
+      selectSong(currentSongIndex);
+    }
+
+    audio.ontimeupdate = updateProgress;
+    audio.onloadedmetadata = setDuration;
+    audio.onended = playNext;
+    audio.volume = 0.5;
+  </script>
+</body>
+</html>
